@@ -10,14 +10,20 @@ import SwiftData
 
 @main
 struct TasklyApp: App {
-    var sharedModelContainer: ModelContainer = {
+    @State private var session = SessionState()
+
+    let sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            TaskItem.self,
+            CompletionRecord.self,
+            PlayerProfile.self,
+            FocusSession.self,
+            Reward.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -25,7 +31,10 @@ struct TasklyApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environment(session)
+                .preferredColorScheme(.dark)
+                .tint(Theme.accent)
         }
         .modelContainer(sharedModelContainer)
     }
