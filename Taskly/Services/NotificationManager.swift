@@ -114,6 +114,8 @@ final class NotificationManager {
 
         return plan
             .filter { $0.fireDate > now }
+            // Break days stay quiet. Build-expiry still fires — the install can still die.
+            .filter { $0.kind == .buildExpiry || !profile.isOnBreak(on: $0.fireDate, calendar: calendar) }
             .sorted { $0.fireDate < $1.fireDate }
     }
 
@@ -175,6 +177,7 @@ final class NotificationManager {
 
         for offset in 0..<Self.digestHorizon {
             guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { break }
+            if profile.isOnBreak(on: day, calendar: calendar) { continue }
             let scheduled = QuestEngine.tasks(tasks, scheduledOn: day, calendar: calendar)
             guard !scheduled.isEmpty else { continue }
 
@@ -213,7 +216,8 @@ final class NotificationManager {
             }
         }
 
-        if profile.streakAlertsEnabled, profile.currentDayStreak >= 2 {
+        if profile.streakAlertsEnabled, profile.currentDayStreak >= 2,
+           !profile.isOnBreak(on: today, calendar: calendar) {
             let scheduledToday = QuestEngine.tasks(tasks, scheduledOn: today, calendar: calendar)
             let doneToday = scheduledToday.contains { $0.isCompleted(on: today, calendar: calendar) }
             if !doneToday, let fire = time(21 * 60 + 30, on: today, calendar: calendar), fire > now {
@@ -250,6 +254,7 @@ final class NotificationManager {
 
         for offset in 0..<Self.encouragementHorizon {
             guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { break }
+            if profile.isOnBreak(on: day, calendar: calendar) { continue }
             let scheduled = QuestEngine.tasks(tasks, scheduledOn: day, calendar: calendar)
             guard !scheduled.isEmpty else { continue }
 

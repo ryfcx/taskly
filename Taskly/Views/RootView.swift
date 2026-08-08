@@ -101,7 +101,7 @@ struct RootView: View {
         // Streaks depend on "today", so re-derive them whenever the app opens.
         QuestEngine.recomputeDayStreak(profile: profile, allTasks: tasks)
         for task in tasks {
-            QuestEngine.recomputeStreak(for: task, on: Date())
+            QuestEngine.recomputeStreak(for: task, on: Date(), profile: profile)
         }
         await NotificationManager.shared.refreshAuthorizationStatus()
         refreshNotifications(profile: profile)
@@ -138,6 +138,8 @@ struct RootView: View {
             hasher.combine(profile.encouragementEnabled)
             hasher.combine(profile.encouragementPingsPerDay)
             hasher.combine(profile.buildExpiryAlertsEnabled)
+            hasher.combine(profile.breakStartDay)
+            hasher.combine(profile.breakEndDay)
             hasher.combine(profile.currentDayStreak)
         }
         return hasher.finalize()

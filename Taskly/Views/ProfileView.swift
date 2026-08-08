@@ -22,6 +22,9 @@ struct ProfileView: View {
     @State private var draftName = ""
     @State private var isConfirmingReset = false
     @State private var isManagingQuests = false
+    @State private var isEditingBreak = false
+    @State private var breakStartDraft = Date()
+    @State private var breakEndDraft = Date()
 
     var body: some View {
         NavigationStack {
@@ -31,6 +34,7 @@ struct ProfileView: View {
                     lifetimeStats
                     achievementsSection
                     manageQuestsSection
+                    breakSection
                     notificationSection
                     upcomingAlerts
                     resetSection
@@ -225,6 +229,128 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Break / vacation
+
+    private var breakSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(
+                title: "Break",
+                subtitle: profile.isOnBreak()
+                    ? "You're on vacation right now"
+                    : "Pause quests and pings for a while"
+            )
+
+            VStack(spacing: 0) {
+                if profile.hasBreakScheduled {
+                    HStack(spacing: 12) {
+                        Text("🏝️")
+                            .font(.system(size: 22))
+                            .frame(width: 36, height: 36)
+                            .background {
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .fill(Theme.accent.opacity(0.14))
+                            }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(profile.isOnBreak() ? "On vacation" : "Break scheduled")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text(profile.breakRangeLabel ?? "")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(Theme.textTertiary)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            Haptics.warning()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                profile.clearBreak()
+                            }
+                        } label: {
+                            Text("Clear")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundStyle(Theme.danger)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(14)
+
+                    Divider().overlay(Theme.hairline)
+                }
+
+                Button {
+                    Haptics.tap()
+                    breakStartDraft = profile.breakStartDay ?? Date()
+                    breakEndDraft = profile.breakEndDay
+                        ?? Calendar.current.date(byAdding: .day, value: 3, to: Date())
+                        ?? Date()
+                    isEditingBreak = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: profile.hasBreakScheduled ? "pencil" : "airplane")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 20)
+                        Text(profile.hasBreakScheduled ? "Edit break dates" : "Set a break")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+            }
+            .glassCard()
+        }
+        .sheet(isPresented: $isEditingBreak) {
+            breakEditorSheet
+        }
+    }
+
+    private var breakEditorSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    DatePicker(
+                        "Starts",
+                        selection: $breakStartDraft,
+                        in: Date()...,
+                        displayedComponents: .date
+                    )
+                    DatePicker(
+                        "Ends",
+                        selection: $breakEndDraft,
+                        in: breakStartDraft...,
+                        displayedComponents: .date
+                    )
+                } footer: {
+                    Text("No quests and no pings on those days. Streaks pause instead of resetting.")
+                }
+            }
+            .navigationTitle("Set a break")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { isEditingBreak = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        profile.setBreak(from: breakStartDraft, to: breakEndDraft)
+                        Haptics.success()
+                        isEditingBreak = false
+                    }
+                    .fontWeight(.bold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     // MARK: - Notifications

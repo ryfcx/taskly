@@ -46,6 +46,11 @@ final class PlayerProfile {
     /// Warns before this build's seven day free-account signature runs out.
     var buildExpiryAlertsEnabled: Bool = true
 
+    /// Inclusive start of a break (vacation, etc.). Nil means no break is set.
+    var breakStartDay: Date?
+    /// Inclusive end of the break. Board stays empty and pings stay off through this day.
+    var breakEndDay: Date?
+
     init() {
         self.id = UUID()
         self.createdAt = Date()
@@ -53,6 +58,43 @@ final class PlayerProfile {
 }
 
 extension PlayerProfile {
+    /// Whether `date` falls inside the current break window.
+    func isOnBreak(on date: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard let start = breakStartDay, let end = breakEndDay else { return false }
+        let day = calendar.startOfDay(for: date)
+        return day >= calendar.startOfDay(for: start) && day <= calendar.startOfDay(for: end)
+    }
+
+    var hasBreakScheduled: Bool {
+        breakStartDay != nil && breakEndDay != nil
+    }
+
+    /// Short label for the break window, e.g. "Jul 30 – Aug 5".
+    var breakRangeLabel: String? {
+        guard let start = breakStartDay, let end = breakEndDay else { return nil }
+        let calendar = Calendar.current
+        let startDay = calendar.startOfDay(for: start)
+        let endDay = calendar.startOfDay(for: end)
+        let formatter = Date.FormatStyle().month(.abbreviated).day()
+        if calendar.isDate(startDay, inSameDayAs: endDay) {
+            return startDay.formatted(formatter)
+        }
+        return "\(startDay.formatted(formatter)) – \(endDay.formatted(formatter))"
+    }
+
+    func clearBreak() {
+        breakStartDay = nil
+        breakEndDay = nil
+    }
+
+    /// Sets an inclusive break. End is clamped so it never falls before start.
+    func setBreak(from start: Date, to end: Date, calendar: Calendar = .current) {
+        let startDay = calendar.startOfDay(for: start)
+        let endDay = calendar.startOfDay(for: end)
+        breakStartDay = startDay
+        breakEndDay = max(startDay, endDay)
+    }
+
     var level: Int { LevelSystem.level(forXP: totalXP) }
     var rank: Rank { Rank.forLevel(level) }
     var xpIntoLevel: Int { totalXP - LevelSystem.cumulativeXP(forLevel: level) }

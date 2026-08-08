@@ -47,7 +47,9 @@ struct TodayView: View {
                         reminderCount: scheduled.filter(\.reminderEnabled).count
                     )
 
-                    if scheduled.isEmpty {
+                    if profile.isOnBreak(on: selectedDay) {
+                        vacationState
+                    } else if scheduled.isEmpty {
                         emptyState
                     } else {
                         if availableCategories.count > 1 {
@@ -96,7 +98,8 @@ struct TodayView: View {
     // MARK: - Derived data
 
     private var scheduled: [TaskItem] {
-        tasks.filter { $0.isScheduled(on: selectedDay) }
+        guard !profile.isOnBreak(on: selectedDay) else { return [] }
+        return tasks.filter { $0.isScheduled(on: selectedDay) }
     }
 
     private var filtered: [TaskItem] {
@@ -254,6 +257,50 @@ struct TodayView: View {
                 .glassCard(radius: 16, fill: Theme.accent.opacity(0.08))
         }
         .buttonStyle(.pressable)
+    }
+
+    private var vacationState: some View {
+        VStack(spacing: 14) {
+            VStack(spacing: 12) {
+                Text("🏝️")
+                    .font(.system(size: 48))
+                Text("You're on vacation")
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(vacationMessage)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 34)
+            .padding(.horizontal, 24)
+            .glassCard(fill: Theme.accent.opacity(0.08))
+
+            if profile.isOnBreak() {
+                Button {
+                    Haptics.tap()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        profile.clearBreak()
+                    }
+                } label: {
+                    Label("End break early", systemImage: "sun.max.fill")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.accent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .glassCard(radius: 16, fill: Theme.accent.opacity(0.08))
+                }
+                .buttonStyle(.pressable)
+            }
+        }
+    }
+
+    private var vacationMessage: String {
+        if let range = profile.breakRangeLabel {
+            return "No quests, no pings · \(range). Your streaks stay put."
+        }
+        return "No quests and no pings until you're back. Your streaks stay put."
     }
 
     private var emptyState: some View {

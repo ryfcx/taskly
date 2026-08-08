@@ -330,6 +330,56 @@ struct QuestEngineTests {
         #expect(profile.currentDayStreak == 3)
         #expect(profile.bestDayStreak == 3)
     }
+
+    @Test func aBreakBridgesTheDayStreak() throws {
+        let context = try makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let profile = PlayerProfile()
+        let task = TaskItem(title: "Study math", difficulty: .normal)
+        context.insert(profile)
+        context.insert(task)
+
+        // Active two days ago, then a one-day break yesterday with no clears.
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let record = CompletionRecord(timestamp: twoDaysAgo, xpAwarded: 20, category: .study, task: task)
+        context.insert(record)
+        task.completions.append(record)
+
+        profile.setBreak(from: yesterday, to: yesterday)
+        QuestEngine.complete(task, profile: profile, allTasks: [task], context: context)
+
+        #expect(profile.currentDayStreak == 2)
+    }
+}
+
+// MARK: - Breaks
+
+struct BreakTests {
+    private let calendar = Calendar.current
+
+    @Test func breakCoversInclusiveDateRange() {
+        let profile = PlayerProfile()
+        let start = calendar.startOfDay(for: Date())
+        let end = calendar.date(byAdding: .day, value: 3, to: start)!
+        profile.setBreak(from: start, to: end)
+
+        #expect(profile.isOnBreak(on: start))
+        #expect(profile.isOnBreak(on: end))
+        #expect(profile.isOnBreak(on: calendar.date(byAdding: .day, value: 1, to: start)!))
+        #expect(!profile.isOnBreak(on: calendar.date(byAdding: .day, value: -1, to: start)!))
+        #expect(!profile.isOnBreak(on: calendar.date(byAdding: .day, value: 4, to: start)!))
+    }
+
+    @Test func clearingABreakRemovesIt() {
+        let profile = PlayerProfile()
+        profile.setBreak(from: Date(), to: Date())
+        #expect(profile.hasBreakScheduled)
+        profile.clearBreak()
+        #expect(!profile.hasBreakScheduled)
+        #expect(!profile.isOnBreak())
+    }
 }
 
 // MARK: - Notifications
@@ -482,6 +532,31 @@ struct NotificationPlanTests {
         )
 
         #expect(!plan.contains { $0.kind == .encouragement })
+    }
+
+    @Test func aBreakSilencesQuestPingsButKeepsBuildExpiry() {
+        let profile = PlayerProfile()
+        let today = calendar.startOfDay(for: Date())
+        let end = calendar.date(byAdding: .day, value: 2, to: today)!
+        profile.setBreak(from: today, to: end)
+        let task = TaskItem(title: "Study math", reminderEnabled: true, reminderMinutes: 12 * 60)
+        let expiry = BuildExpiry(
+            expiresAt: calendar.date(byAdding: .day, value: 1, to: today)!.addingTimeInterval(12 * 3600),
+            source: .provisioningProfile
+        )
+
+        let plan = NotificationManager.shared.buildPlan(
+            tasks: [task],
+            profile: profile,
+            now: today,
+            buildExpiry: expiry
+        )
+
+        #expect(
+            !plan.contains { $0.kind != .buildExpiry && profile.isOnBreak(on: $0.fireDate) },
+            "Quest pings should stay quiet on break days"
+        )
+        #expect(plan.contains { $0.kind == .buildExpiry })
     }
 
     // MARK: - Build expiry

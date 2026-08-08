@@ -71,7 +71,7 @@ enum QuestEngine {
         task.lastCompletedDay = day
         task.totalCompletions += 1
 
-        recomputeStreak(for: task, on: day, calendar: calendar)
+        recomputeStreak(for: task, on: day, profile: profile, calendar: calendar)
         let bonus = streakBonus(base: base, streak: task.currentStreak)
         record.xpAwarded = base + bonus
 
@@ -136,44 +136,88 @@ enum QuestEngine {
         task.totalCompletions = max(0, task.totalCompletions - 1)
         task.lastCompletedDay = task.completions.map(\.day).max()
 
-        recomputeStreak(for: task, on: day, calendar: calendar)
+        recomputeStreak(for: task, on: day, profile: profile, calendar: calendar)
         recomputeDayStreak(profile: profile, allTasks: allTasks, calendar: calendar)
     }
 
     // MARK: - Streaks
 
     /// Walks backwards through the days this quest was expected on, counting unbroken clears.
-    static func recomputeStreak(for task: TaskItem, on referenceDay: Date, calendar: Calendar = .current) {
+    /// Break days are skipped so a vacation does not wipe quest streaks.
+    static func recomputeStreak(
+        for task: TaskItem,
+        on referenceDay: Date,
+        profile: PlayerProfile? = nil,
+        calendar: Calendar = .current
+    ) {
         var streak = 0
         var cursor: Date? = calendar.startOfDay(for: referenceDay)
 
-        // If today's occurrence is still open the streak is measured from the previous one.
-        if let day = cursor, !task.isCompleted(on: day, calendar: calendar) {
-            cursor = task.previousScheduledDay(before: day, calendar: calendar)
+        // If the reference day is still open (or a break day), measure from the previous one.
+        if let day = cursor {
+            let onBreak = profile?.isOnBreak(on: day, calendar: calendar) == true
+            if onBreak || !task.isCompleted(on: day, calendar: calendar) {
+                cursor = previousCountableDay(before: day, task: task, profile: profile, calendar: calendar)
+            }
         }
 
-        while let day = cursor, task.isCompleted(on: day, calendar: calendar) {
+        while let day = cursor {
+            if profile?.isOnBreak(on: day, calendar: calendar) == true {
+                cursor = previousCountableDay(before: day, task: task, profile: profile, calendar: calendar)
+                continue
+            }
+            guard task.isCompleted(on: day, calendar: calendar) else { break }
             streak += 1
-            cursor = task.previousScheduledDay(before: day, calendar: calendar)
+            cursor = previousCountableDay(before: day, task: task, profile: profile, calendar: calendar)
         }
 
         task.currentStreak = streak
         task.bestStreak = max(task.bestStreak, streak)
     }
 
+    /// Previous scheduled day that is not inside a break window.
+    private static func previousCountableDay(
+        before day: Date,
+        task: TaskItem,
+        profile: PlayerProfile?,
+        calendar: Calendar
+    ) -> Date? {
+        var cursor = task.previousScheduledDay(before: day, calendar: calendar)
+        while let candidate = cursor, profile?.isOnBreak(on: candidate, calendar: calendar) == true {
+            cursor = task.previousScheduledDay(before: candidate, calendar: calendar)
+        }
+        return cursor
+    }
+
     /// A day counts toward the player streak if at least one quest was cleared on it.
+    /// Break days bridge the gap so a vacation does not reset the day streak.
     static func recomputeDayStreak(profile: PlayerProfile, allTasks: [TaskItem], calendar: Calendar = .current) {
         let activeDays = Set(allTasks.flatMap { $0.completions }.map { calendar.startOfDay(for: $0.day) })
         let today = calendar.startOfDay(for: Date())
 
         var cursor = today
         if !activeDays.contains(today) {
-            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return }
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else {
+                profile.currentDayStreak = 0
+                return
+            }
             cursor = yesterday
         }
 
+        // Walk back past a leading run of break days with no activity.
+        while profile.isOnBreak(on: cursor, calendar: calendar), !activeDays.contains(cursor) {
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
+        }
+
         var streak = 0
-        while activeDays.contains(cursor) {
+        while true {
+            if profile.isOnBreak(on: cursor, calendar: calendar) {
+                guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+                cursor = previous
+                continue
+            }
+            guard activeDays.contains(cursor) else { break }
             streak += 1
             guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
             cursor = previous

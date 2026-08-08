@@ -26,6 +26,10 @@ Daily, weekly, or one-off. Categories + difficulty set the XP. Optional reminder
 
 Morning briefing, evening nudge, mid-day encouragement, streak warning. Also warns when a free Apple developer build is about to expire (7 days).
 
+## Breaks
+
+Profile → Set a break. Pick start/end dates — board stays empty, pings stay off, streaks pause instead of resetting.
+
 ## Run
 
 Open `Taskly.xcodeproj` in Xcode and hit Run. Targets iOS 26.
