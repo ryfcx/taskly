@@ -12,6 +12,15 @@ import SwiftData
 
 // MARK: - Level curve
 
+struct DifficultyTests {
+    @Test func ultraPaysMoreThanEpicAndTakesSixPips() {
+        #expect(TaskDifficulty.ultra.baseXP > TaskDifficulty.epic.baseXP)
+        #expect(TaskDifficulty.ultra.baseXP == 120)
+        #expect(TaskDifficulty.ultra.pips == TaskDifficulty.maxPips)
+        #expect(TaskDifficulty.ultra.blurb.lowercased().contains("day"))
+    }
+}
+
 struct LevelSystemTests {
 
     @Test func levelOneStartsAtZeroXP() {

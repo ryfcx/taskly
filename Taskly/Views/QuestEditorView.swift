@@ -205,9 +205,13 @@ struct QuestEditorView: View {
 
     private var difficultySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Difficulty", accessory: "+\(difficulty.baseXP) XP base")
+            SectionHeader(
+                title: "Difficulty",
+                subtitle: difficulty.blurb,
+                accessory: "+\(difficulty.baseXP) XP base"
+            )
 
-            HStack(spacing: 7) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 3), spacing: 7) {
                 ForEach(TaskDifficulty.allCases) { option in
                     Button {
                         Haptics.select()

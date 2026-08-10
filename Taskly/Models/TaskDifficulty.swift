@@ -12,6 +12,8 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
     case normal
     case hard
     case epic
+    /// Most of the day — deep work, contests, all-day builds.
+    case ultra
 
     var id: String { rawValue }
 
@@ -22,6 +24,19 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .normal: "Normal"
         case .hard: "Hard"
         case .epic: "Epic"
+        case .ultra: "Ultra"
+        }
+    }
+
+    /// Short hint shown under the difficulty picker.
+    var blurb: String {
+        switch self {
+        case .trivial: "A couple minutes"
+        case .easy: "Quick and light"
+        case .normal: "A solid chunk"
+        case .hard: "Real effort"
+        case .epic: "A big lift"
+        case .ultra: "Most of the day"
         }
     }
 
@@ -32,6 +47,7 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .normal: 20
         case .hard: 35
         case .epic: 60
+        case .ultra: 120
         }
     }
 
@@ -43,8 +59,11 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .normal: 3
         case .hard: 4
         case .epic: 5
+        case .ultra: 6
         }
     }
+
+    static var maxPips: Int { allCases.map(\.pips).max() ?? 5 }
 
     var tint: Color {
         switch self {
@@ -53,6 +72,7 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .normal: Color(hex: 0x4D8DFF)
         case .hard: Color(hex: 0xFFA23A)
         case .epic: Color(hex: 0xFF4D6D)
+        case .ultra: Color(hex: 0xC77DFF)
         }
     }
 }

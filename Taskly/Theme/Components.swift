@@ -104,7 +104,7 @@ struct DifficultyPips: View {
 
     var body: some View {
         HStack(spacing: 2.5) {
-            ForEach(0..<5, id: \.self) { index in
+            ForEach(0..<TaskDifficulty.maxPips, id: \.self) { index in
                 Capsule()
                     .fill(index < difficulty.pips ? difficulty.tint : Color.white.opacity(0.14))
                     .frame(width: 4, height: index < difficulty.pips ? 10 : 6)

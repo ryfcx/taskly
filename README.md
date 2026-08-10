@@ -13,7 +13,7 @@ SwiftUI + SwiftData. Everything stays on device.
 
 ## Quests
 
-Daily, weekly, or one-off. Categories + difficulty set the XP. Optional reminders. Can start today, tomorrow, or a custom date.
+Daily, weekly, or one-off. Categories + difficulty set the XP (Trivial → Ultra). Ultra is for stuff that eats most of the day. Optional reminders. Can start today, tomorrow, or a custom date.
 
 ## Coins & XP
 

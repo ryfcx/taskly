@@ -64,6 +64,7 @@ enum QuestTemplates {
             templates: [
                 QuestTemplate(title: "Study math", symbol: "function", category: .study, difficulty: .normal, reminderMinutes: 17 * 60),
                 QuestTemplate(title: "Study USACO", symbol: "chart.xyaxis.line", category: .study, difficulty: .hard, reminderMinutes: 18 * 60),
+                QuestTemplate(title: "USACO contest day", symbol: "trophy.fill", category: .study, difficulty: .ultra),
                 QuestTemplate(title: "Solve a practice problem", symbol: "puzzlepiece.fill", category: .study, difficulty: .normal),
                 QuestTemplate(title: "Review notes", symbol: "text.book.closed.fill", category: .study, difficulty: .easy),
                 QuestTemplate(title: "Read 20 pages", symbol: "book.closed.fill", category: .mind, difficulty: .easy)
@@ -77,6 +78,7 @@ enum QuestTemplates {
             templates: [
                 QuestTemplate(title: "Work on my app", symbol: "app.badge.fill", category: .build, difficulty: .hard, reminderMinutes: 19 * 60),
                 QuestTemplate(title: "Work on second app", symbol: "square.stack.3d.up.fill", category: .build, difficulty: .hard),
+                QuestTemplate(title: "All-day build session", symbol: "hammer.fill", category: .build, difficulty: .ultra),
                 QuestTemplate(title: "Commit something today", symbol: "curlybraces", category: .build, difficulty: .normal),
                 QuestTemplate(title: "Fix one bug", symbol: "ant.fill", category: .build, difficulty: .normal),
                 QuestTemplate(title: "Plan tomorrow's build", symbol: "list.bullet.clipboard.fill", category: .build, difficulty: .easy, reminderMinutes: 21 * 60)
