@@ -22,7 +22,9 @@ struct QuestDetailView: View {
     /// Computed rather than stored so a screen left open overnight rolls over correctly.
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
 
-    private var isCompleted: Bool { task.isCompleted(on: today) }
+    private var isCompleted: Bool { task.isCleared(on: today) }
+    private var isSkipped: Bool { task.isSkipped(on: today) }
+    private var isResolved: Bool { task.isCompleted(on: today) }
 
     var body: some View {
         ScrollView {
@@ -100,14 +102,48 @@ struct QuestDetailView: View {
             } label: {
                 GradientButtonLabel(
                     title: completeButtonTitle,
-                    symbol: isCompleted ? "arrow.uturn.backward" : "checkmark",
-                    gradient: isCompleted
+                    symbol: isResolved ? "arrow.uturn.backward" : "checkmark",
+                    gradient: isResolved
                         ? LinearGradient(colors: [Theme.surfaceElevated, Theme.surface], startPoint: .leading, endPoint: .trailing)
                         : LinearGradient(colors: [Theme.success, Theme.success.mix(with: Theme.accent, by: 0.4)], startPoint: .leading, endPoint: .trailing)
                 )
             }
             .buttonStyle(.pressable)
-            .disabled(!task.isScheduled(on: today) && !isCompleted)
+            .disabled(!task.isScheduled(on: today) && !isResolved)
+
+            if task.isScheduled(on: today), !isResolved {
+                Button {
+                    skipToday()
+                } label: {
+                    Label("Skip for today", systemImage: "forward.fill")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.06))
+                        }
+                }
+                .buttonStyle(.pressable)
+            }
+
+            if isSkipped {
+                Button {
+                    completeAnyway()
+                } label: {
+                    Label("Complete anyway", systemImage: "checkmark")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.success)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Theme.success.opacity(0.12))
+                        }
+                }
+                .buttonStyle(.pressable)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(20)
@@ -115,6 +151,7 @@ struct QuestDetailView: View {
     }
 
     private var completeButtonTitle: String {
+        if isSkipped { return "Undo skip" }
         if isCompleted { return "Mark as not done" }
         if let startLabel = task.startDayLabel { return "Starts \(startLabel)" }
         return "Complete quest"
@@ -142,7 +179,7 @@ struct QuestDetailView: View {
                 statTile("Current streak", "\(task.currentStreak)", "flame.fill", Theme.streak)
                 statTile("Best streak", "\(task.bestStreak)", "trophy.fill", Theme.gold)
                 statTile("Total clears", "\(task.totalCompletions)", "checkmark.seal.fill", Theme.success)
-                statTile("XP earned", "\(task.completions.reduce(0) { $0 + $1.xpAwarded })", "bolt.fill", Theme.accent)
+                statTile("XP earned", "\(task.completions.filter { !$0.wasSkipped }.reduce(0) { $0 + $1.xpAwarded })", "bolt.fill", Theme.accent)
             }
         }
     }
@@ -240,10 +277,21 @@ struct QuestDetailView: View {
     }
 
     private func toggle() {
-        if isCompleted {
+        if isResolved {
             Haptics.undo()
             QuestEngine.undoCompletion(task, profile: profile, allTasks: allTasks, context: context, on: today)
         } else if let outcome = QuestEngine.complete(task, profile: profile, allTasks: allTasks, context: context, on: today) {
+            session.present(outcome: outcome)
+        }
+    }
+
+    private func skipToday() {
+        Haptics.tap()
+        _ = QuestEngine.skip(task, profile: profile, allTasks: allTasks, context: context, on: today)
+    }
+
+    private func completeAnyway() {
+        if let outcome = QuestEngine.complete(task, profile: profile, allTasks: allTasks, context: context, on: today) {
             session.present(outcome: outcome)
         }
     }
@@ -285,7 +333,11 @@ struct HistoryHeatmap: View {
     }
 
     private var completedDays: Set<Date> {
-        Set(task.completions.map { calendar.startOfDay(for: $0.day) })
+        Set(
+            task.completions
+                .filter { !$0.wasSkipped }
+                .map { calendar.startOfDay(for: $0.day) }
+        )
     }
 
     private func date(week: Int, weekday: Int) -> Date {

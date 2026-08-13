@@ -97,7 +97,7 @@ struct StatsView: View {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { continue }
             for task in allTasks where task.matchesPattern(on: day, calendar: calendar) {
                 scheduled += 1
-                if task.isCompleted(on: day, calendar: calendar) { cleared += 1 }
+                if task.isCleared(on: day, calendar: calendar) { cleared += 1 }
             }
         }
         guard scheduled > 0 else { return 0 }
@@ -113,7 +113,7 @@ struct StatsView: View {
 
     private var categorySlices: [CategorySlice] {
         let cutoff = calendar.date(byAdding: .day, value: -range.days, to: calendar.startOfDay(for: Date())) ?? .distantPast
-        let recent = completions.filter { $0.day >= cutoff }
+        let recent = completions.filter { $0.day >= cutoff && !$0.wasSkipped }
         let grouped = Dictionary(grouping: recent, by: \.category)
 
         return grouped

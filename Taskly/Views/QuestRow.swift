@@ -10,6 +10,7 @@ struct QuestRow: View {
     var task: TaskItem
     var day: Date
     var isCompleted: Bool
+    var isSkipped: Bool = false
     /// Set when showing a future day, where quests can be queued but not cleared yet.
     var isLocked: Bool = false
     var onToggle: () -> Void
@@ -17,10 +18,14 @@ struct QuestRow: View {
 
     @State private var checkScale: CGFloat = 1
 
+    private var isResolved: Bool { isCompleted || isSkipped }
+
     var body: some View {
         HStack(spacing: 13) {
             if isLocked {
                 queuedBadge
+            } else if isSkipped {
+                skippedBadge
             } else {
                 checkButton
             }
@@ -32,7 +37,7 @@ struct QuestRow: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(task.title)
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(isCompleted ? Theme.textTertiary : Theme.textPrimary)
+                            .foregroundStyle(isResolved ? Theme.textTertiary : Theme.textPrimary)
                             .strikethrough(isCompleted, color: Theme.textTertiary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
@@ -43,9 +48,9 @@ struct QuestRow: View {
                     Spacer(minLength: 0)
 
                     VStack(alignment: .trailing, spacing: 6) {
-                        Text(isCompleted ? "+\(earnedXP)" : "+\(QuestEngine.projectedXP(for: task))")
+                        Text(trailingLabel)
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(isCompleted ? Theme.success : Theme.textPrimary)
+                            .foregroundStyle(trailingColor)
                             .contentTransition(.numericText())
                         DifficultyPips(difficulty: task.difficulty)
                     }
@@ -55,23 +60,33 @@ struct QuestRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
-        .glassCard(fill: isCompleted ? Theme.surface.opacity(0.4) : Theme.surface.opacity(0.72))
+        .glassCard(fill: isResolved ? Theme.surface.opacity(0.4) : Theme.surface.opacity(0.72))
         .overlay(alignment: .leading) {
-            // Category colour spine
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(task.category.tint.opacity(isCompleted ? 0.3 : 0.9))
+                .fill(task.category.tint.opacity(isResolved ? 0.3 : 0.9))
                 .frame(width: 3.5)
                 .padding(.vertical, 16)
                 .padding(.leading, 1)
         }
-        .opacity(isCompleted ? 0.72 : 1)
+        .opacity(isResolved ? 0.72 : 1)
+    }
+
+    private var trailingLabel: String {
+        if isSkipped { return "Skip" }
+        if isCompleted { return "+\(earnedXP)" }
+        return "+\(QuestEngine.projectedXP(for: task))"
+    }
+
+    private var trailingColor: Color {
+        if isSkipped { return Theme.textTertiary }
+        if isCompleted { return Theme.success }
+        return Theme.textPrimary
     }
 
     private var earnedXP: Int {
         task.completion(on: day)?.xpAwarded ?? task.difficulty.baseXP
     }
 
-    /// Stands in for the check circle on future days so the row reads as planned, not actionable.
     private var queuedBadge: some View {
         Image(systemName: "clock")
             .font(.system(size: 13, weight: .bold))
@@ -81,6 +96,17 @@ struct QuestRow: View {
                 Circle().strokeBorder(Theme.hairline, style: StrokeStyle(lineWidth: 2, dash: [3, 3]))
             }
             .accessibilityLabel("\(task.title), queued for later")
+    }
+
+    private var skippedBadge: some View {
+        Image(systemName: "forward.fill")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(Theme.textTertiary)
+            .frame(width: 28, height: 28)
+            .background {
+                Circle().strokeBorder(Theme.hairlineStrong, lineWidth: 2)
+            }
+            .accessibilityLabel("\(task.title), skipped for today")
     }
 
     private var checkButton: some View {
@@ -116,11 +142,11 @@ struct QuestRow: View {
     private var iconTile: some View {
         Image(systemName: task.iconName)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(isCompleted ? Theme.textTertiary : task.category.tint)
+            .foregroundStyle(isResolved ? Theme.textTertiary : task.category.tint)
             .frame(width: 36, height: 36)
             .background {
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(task.category.tint.opacity(isCompleted ? 0.08 : 0.16))
+                    .fill(task.category.tint.opacity(isResolved ? 0.08 : 0.16))
             }
     }
 
@@ -129,17 +155,18 @@ struct QuestRow: View {
         HStack(spacing: 6) {
             MetaPill(symbol: task.category.symbol, text: task.category.title, tint: task.category.tint)
 
-            if task.currentStreak >= 2 {
+            if isSkipped {
+                MetaPill(symbol: "forward.fill", text: "Skipped", tint: Theme.textTertiary)
+            } else if task.currentStreak >= 2 {
                 MetaPill(symbol: "flame.fill", text: "\(task.currentStreak)", tint: Theme.streak)
             }
 
             if task.isOverdue {
                 MetaPill(symbol: "exclamationmark.triangle.fill", text: "Overdue", tint: Theme.danger)
-            } else if task.reminderEnabled {
+            } else if !isSkipped, task.reminderEnabled {
                 MetaPill(symbol: "bell.fill", text: Self.timeLabel(task.reminderMinutes), tint: Theme.textTertiary)
             }
 
-            // Redundant while already viewing the day this quest is queued for.
             if !isLocked, let startLabel = task.startDayLabel {
                 MetaPill(symbol: "calendar", text: startLabel, tint: Theme.accent)
             }

@@ -60,7 +60,15 @@ enum QuestEngine {
     ) -> CompletionOutcome? {
         let calendar = Calendar.current
         let day = calendar.startOfDay(for: date)
-        guard !task.isCompleted(on: day, calendar: calendar) else { return nil }
+
+        // Turning a skip into a real clear just replaces the excuse record.
+        if let existing = task.completion(on: day, calendar: calendar) {
+            guard existing.wasSkipped else { return nil }
+            task.completions.removeAll { $0.id == existing.id }
+            context.delete(existing)
+        } else if task.isCompleted(on: day, calendar: calendar) {
+            return nil
+        }
 
         let levelBefore = profile.level
         let base = task.difficulty.baseXP
@@ -106,6 +114,34 @@ enum QuestEngine {
         )
     }
 
+    /// Excuses a quest for the day: off the board, no XP, streak bridges over it.
+    @discardableResult
+    static func skip(
+        _ task: TaskItem,
+        profile: PlayerProfile,
+        allTasks: [TaskItem],
+        context: ModelContext,
+        on date: Date = Date()
+    ) -> Bool {
+        let calendar = Calendar.current
+        let day = calendar.startOfDay(for: date)
+        guard !task.isCompleted(on: day, calendar: calendar) else { return false }
+
+        let record = CompletionRecord(
+            timestamp: date,
+            xpAwarded: 0,
+            category: task.category,
+            task: task,
+            wasSkipped: true
+        )
+        context.insert(record)
+        task.completions.append(record)
+
+        recomputeStreak(for: task, on: day, profile: profile, calendar: calendar)
+        recomputeDayStreak(profile: profile, allTasks: allTasks, calendar: calendar)
+        return true
+    }
+
     static func undoCompletion(
         _ task: TaskItem,
         profile: PlayerProfile,
@@ -117,24 +153,27 @@ enum QuestEngine {
         let day = calendar.startOfDay(for: date)
         guard let record = task.completion(on: day, calendar: calendar) else { return }
 
-        profile.totalXP = max(0, profile.totalXP - record.xpAwarded)
+        if !record.wasSkipped {
+            profile.totalXP = max(0, profile.totalXP - record.xpAwarded)
 
-        // Coins already spent on a reward cannot be clawed back, so the balance floors at zero
-        // while the lifetime tally is corrected in full.
-        profile.coins = max(0, profile.coins - record.coinsAwarded)
-        profile.lifetimeCoins = max(0, profile.lifetimeCoins - record.coinsAwarded)
+            // Coins already spent on a reward cannot be clawed back, so the balance floors at zero
+            // while the lifetime tally is corrected in full.
+            profile.coins = max(0, profile.coins - record.coinsAwarded)
+            profile.lifetimeCoins = max(0, profile.lifetimeCoins - record.coinsAwarded)
 
-        // Hand back the perfect day bonus if this undo breaks the clean sweep.
-        if calendar.isDate(profile.lastPerfectDay ?? .distantPast, inSameDayAs: day) {
-            profile.totalXP = max(0, profile.totalXP - perfectDayBonus)
-            profile.perfectDays = max(0, profile.perfectDays - 1)
-            profile.lastPerfectDay = nil
+            // Hand back the perfect day bonus if this undo breaks the clean sweep.
+            if calendar.isDate(profile.lastPerfectDay ?? .distantPast, inSameDayAs: day) {
+                profile.totalXP = max(0, profile.totalXP - perfectDayBonus)
+                profile.perfectDays = max(0, profile.perfectDays - 1)
+                profile.lastPerfectDay = nil
+            }
+
+            task.totalCompletions = max(0, task.totalCompletions - 1)
         }
 
         task.completions.removeAll { $0.id == record.id }
         context.delete(record)
-        task.totalCompletions = max(0, task.totalCompletions - 1)
-        task.lastCompletedDay = task.completions.map(\.day).max()
+        task.lastCompletedDay = task.completions.filter { !$0.wasSkipped }.map(\.day).max()
 
         recomputeStreak(for: task, on: day, profile: profile, calendar: calendar)
         recomputeDayStreak(profile: profile, allTasks: allTasks, calendar: calendar)
@@ -143,7 +182,7 @@ enum QuestEngine {
     // MARK: - Streaks
 
     /// Walks backwards through the days this quest was expected on, counting unbroken clears.
-    /// Break days are skipped so a vacation does not wipe quest streaks.
+    /// Break days and skips are bridged so they do not wipe the streak.
     static func recomputeStreak(
         for task: TaskItem,
         on referenceDay: Date,
@@ -153,20 +192,18 @@ enum QuestEngine {
         var streak = 0
         var cursor: Date? = calendar.startOfDay(for: referenceDay)
 
-        // If the reference day is still open (or a break day), measure from the previous one.
-        if let day = cursor {
-            let onBreak = profile?.isOnBreak(on: day, calendar: calendar) == true
-            if onBreak || !task.isCompleted(on: day, calendar: calendar) {
-                cursor = previousCountableDay(before: day, task: task, profile: profile, calendar: calendar)
-            }
+        // Open, skipped, or break days at the tip don't count — step back to the last clear.
+        if let day = cursor, shouldBridge(day, task: task, profile: profile, calendar: calendar)
+            || !task.isCleared(on: day, calendar: calendar) {
+            cursor = previousCountableDay(before: day, task: task, profile: profile, calendar: calendar)
         }
 
         while let day = cursor {
-            if profile?.isOnBreak(on: day, calendar: calendar) == true {
+            if shouldBridge(day, task: task, profile: profile, calendar: calendar) {
                 cursor = previousCountableDay(before: day, task: task, profile: profile, calendar: calendar)
                 continue
             }
-            guard task.isCompleted(on: day, calendar: calendar) else { break }
+            guard task.isCleared(on: day, calendar: calendar) else { break }
             streak += 1
             cursor = previousCountableDay(before: day, task: task, profile: profile, calendar: calendar)
         }
@@ -175,7 +212,17 @@ enum QuestEngine {
         task.bestStreak = max(task.bestStreak, streak)
     }
 
-    /// Previous scheduled day that is not inside a break window.
+    private static func shouldBridge(
+        _ day: Date,
+        task: TaskItem,
+        profile: PlayerProfile?,
+        calendar: Calendar
+    ) -> Bool {
+        profile?.isOnBreak(on: day, calendar: calendar) == true
+            || task.isSkipped(on: day, calendar: calendar)
+    }
+
+    /// Previous scheduled day that still counts toward a streak (not a break or skip).
     private static func previousCountableDay(
         before day: Date,
         task: TaskItem,
@@ -183,7 +230,7 @@ enum QuestEngine {
         calendar: Calendar
     ) -> Date? {
         var cursor = task.previousScheduledDay(before: day, calendar: calendar)
-        while let candidate = cursor, profile?.isOnBreak(on: candidate, calendar: calendar) == true {
+        while let candidate = cursor, shouldBridge(candidate, task: task, profile: profile, calendar: calendar) {
             cursor = task.previousScheduledDay(before: candidate, calendar: calendar)
         }
         return cursor
@@ -192,7 +239,12 @@ enum QuestEngine {
     /// A day counts toward the player streak if at least one quest was cleared on it.
     /// Break days bridge the gap so a vacation does not reset the day streak.
     static func recomputeDayStreak(profile: PlayerProfile, allTasks: [TaskItem], calendar: Calendar = .current) {
-        let activeDays = Set(allTasks.flatMap { $0.completions }.map { calendar.startOfDay(for: $0.day) })
+        let activeDays = Set(
+            allTasks
+                .flatMap(\.completions)
+                .filter { !$0.wasSkipped }
+                .map { calendar.startOfDay(for: $0.day) }
+        )
         let today = calendar.startOfDay(for: Date())
 
         var cursor = today
@@ -237,7 +289,8 @@ enum QuestEngine {
     static func isPerfectDay(allTasks: [TaskItem], on day: Date, calendar: Calendar = .current) -> Bool {
         let scheduled = tasks(allTasks, scheduledOn: day, calendar: calendar)
         guard scheduled.count >= perfectDayMinimumQuests else { return false }
-        return scheduled.allSatisfy { $0.isCompleted(on: day, calendar: calendar) }
+        // Skips don't count — a perfect day means everything was actually cleared.
+        return scheduled.allSatisfy { $0.isCleared(on: day, calendar: calendar) }
     }
 
     /// Whether every quest on the day is done, regardless of how many there were.

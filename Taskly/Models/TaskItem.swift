@@ -169,6 +169,19 @@ extension TaskItem {
         return completions.contains { calendar.isDate($0.day, inSameDayAs: date) }
     }
 
+    /// Cleared for real — not a skip. Used for streaks, XP stats and perfect days.
+    func isCleared(on date: Date, calendar: Calendar = .current) -> Bool {
+        guard let record = completion(on: date, calendar: calendar) else {
+            if let last = lastCompletedDay, calendar.isDate(last, inSameDayAs: date) { return true }
+            return false
+        }
+        return !record.wasSkipped
+    }
+
+    func isSkipped(on date: Date, calendar: Calendar = .current) -> Bool {
+        completion(on: date, calendar: calendar)?.wasSkipped == true
+    }
+
     func completion(on date: Date, calendar: Calendar = .current) -> CompletionRecord? {
         completions.first { calendar.isDate($0.day, inSameDayAs: date) }
     }

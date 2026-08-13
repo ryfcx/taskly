@@ -18,18 +18,28 @@ final class CompletionRecord {
     var xpAwarded: Int = 0
     /// Stored so undoing a clear takes back exactly what it paid, even if rates change.
     var coinsAwarded: Int = 0
+    /// True when the player excused this quest for the day instead of clearing it.
+    /// Skips pay nothing and bridge streaks rather than breaking them.
+    var wasSkipped: Bool = false
     /// Snapshot of the category so history stays accurate if the quest is later re-categorised.
     var categoryRaw: String = TaskCategory.other.rawValue
 
     var task: TaskItem?
 
-    init(timestamp: Date = Date(), xpAwarded: Int, category: TaskCategory, task: TaskItem? = nil) {
+    init(
+        timestamp: Date = Date(),
+        xpAwarded: Int,
+        category: TaskCategory,
+        task: TaskItem? = nil,
+        wasSkipped: Bool = false
+    ) {
         self.id = UUID()
         self.timestamp = timestamp
         self.day = Calendar.current.startOfDay(for: timestamp)
         self.xpAwarded = xpAwarded
         self.categoryRaw = category.rawValue
         self.task = task
+        self.wasSkipped = wasSkipped
     }
 
     var category: TaskCategory {

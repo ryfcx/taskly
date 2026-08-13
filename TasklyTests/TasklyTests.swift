@@ -361,6 +361,47 @@ struct QuestEngineTests {
 
         #expect(profile.currentDayStreak == 2)
     }
+
+    @Test func skippingExcusesAQuestWithoutPayingXP() throws {
+        let context = try makeContext()
+        let profile = PlayerProfile()
+        let task = TaskItem(title: "Workout", difficulty: .hard)
+        context.insert(profile)
+        context.insert(task)
+
+        #expect(QuestEngine.skip(task, profile: profile, allTasks: [task], context: context))
+        #expect(task.isSkipped(on: Date()))
+        #expect(!task.isCleared(on: Date()))
+        #expect(profile.totalXP == 0)
+        #expect(task.totalCompletions == 0)
+        #expect(task.currentStreak == 0)
+    }
+
+    @Test func aSkipBridgesTheQuestStreak() throws {
+        let context = try makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let profile = PlayerProfile()
+        let start = calendar.date(byAdding: .day, value: -7, to: today)!
+        let task = TaskItem(
+            title: "Study math",
+            difficulty: .normal,
+            recurrence: .daily,
+            startDay: start
+        )
+        context.insert(profile)
+        context.insert(task)
+
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let record = CompletionRecord(timestamp: yesterday, xpAwarded: 20, category: .study, task: task)
+        context.insert(record)
+        task.completions.append(record)
+        task.lastCompletedDay = yesterday
+        task.totalCompletions = 1
+
+        #expect(QuestEngine.skip(task, profile: profile, allTasks: [task], context: context, on: today))
+        #expect(task.currentStreak == 1)
+    }
 }
 
 // MARK: - Breaks

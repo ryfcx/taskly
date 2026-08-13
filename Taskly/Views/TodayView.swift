@@ -108,7 +108,7 @@ struct TodayView: View {
     }
 
     private var completed: [TaskItem] {
-        scheduled.filter { $0.isCompleted(on: selectedDay) }
+        scheduled.filter { $0.isCleared(on: selectedDay) }
     }
 
     private var overdue: [TaskItem] {
@@ -121,7 +121,11 @@ struct TodayView: View {
     }
 
     private var done: [TaskItem] {
-        filtered.filter { $0.isCompleted(on: selectedDay) }
+        filtered.filter { $0.isCleared(on: selectedDay) }
+    }
+
+    private var skipped: [TaskItem] {
+        filtered.filter { $0.isSkipped(on: selectedDay) }
     }
 
     /// XP still sitting on the board for the selected day.
@@ -160,6 +164,15 @@ struct TodayView: View {
             )
         }
 
+        if !skipped.isEmpty {
+            section(
+                title: "Skipped",
+                subtitle: "Excused for today",
+                accessory: "\(skipped.count)",
+                tasks: skipped
+            )
+        }
+
         if !isPlanningAhead, pending.isEmpty, overdue.isEmpty, !scheduled.isEmpty {
             allClearBanner
         }
@@ -177,7 +190,8 @@ struct TodayView: View {
                 QuestRow(
                     task: task,
                     day: selectedDay,
-                    isCompleted: task.isCompleted(on: selectedDay),
+                    isCompleted: task.isCleared(on: selectedDay),
+                    isSkipped: task.isSkipped(on: selectedDay),
                     isLocked: isPlanningAhead,
                     onToggle: { toggle(task) },
                     onOpen: { detailTask = task }
@@ -190,13 +204,35 @@ struct TodayView: View {
                     }
 
                     if !isPlanningAhead {
-                        Button {
-                            toggle(task)
-                        } label: {
-                            Label(
-                                task.isCompleted(on: selectedDay) ? "Mark as not done" : "Complete",
-                                systemImage: task.isCompleted(on: selectedDay) ? "arrow.uturn.backward" : "checkmark"
-                            )
+                        if task.isCompleted(on: selectedDay) {
+                            Button {
+                                undo(task)
+                            } label: {
+                                Label(
+                                    task.isSkipped(on: selectedDay) ? "Undo skip" : "Mark as not done",
+                                    systemImage: "arrow.uturn.backward"
+                                )
+                            }
+
+                            if task.isSkipped(on: selectedDay) {
+                                Button {
+                                    complete(task)
+                                } label: {
+                                    Label("Complete anyway", systemImage: "checkmark")
+                                }
+                            }
+                        } else {
+                            Button {
+                                complete(task)
+                            } label: {
+                                Label("Complete", systemImage: "checkmark")
+                            }
+
+                            Button {
+                                skip(task)
+                            } label: {
+                                Label("Skip for today", systemImage: "forward.fill")
+                            }
                         }
                     }
 
@@ -387,18 +423,39 @@ struct TodayView: View {
     // MARK: - Actions
 
     private func toggle(_ task: TaskItem) {
-        // Clearing a quest early would award XP for a day that hasn't happened yet.
+        if task.isCompleted(on: selectedDay) {
+            undo(task)
+        } else {
+            complete(task)
+        }
+    }
+
+    private func complete(_ task: TaskItem) {
         guard !isPlanningAhead else {
             Haptics.warning()
             return
         }
-
-        if task.isCompleted(on: selectedDay) {
-            Haptics.undo()
-            QuestEngine.undoCompletion(task, profile: profile, allTasks: tasks, context: context, on: selectedDay)
-        } else if let outcome = QuestEngine.complete(task, profile: profile, allTasks: tasks, context: context, on: selectedDay) {
+        if let outcome = QuestEngine.complete(task, profile: profile, allTasks: tasks, context: context, on: selectedDay) {
             session.present(outcome: outcome)
         }
+    }
+
+    private func skip(_ task: TaskItem) {
+        guard !isPlanningAhead else {
+            Haptics.warning()
+            return
+        }
+        Haptics.tap()
+        _ = QuestEngine.skip(task, profile: profile, allTasks: tasks, context: context, on: selectedDay)
+    }
+
+    private func undo(_ task: TaskItem) {
+        guard !isPlanningAhead else {
+            Haptics.warning()
+            return
+        }
+        Haptics.undo()
+        QuestEngine.undoCompletion(task, profile: profile, allTasks: tasks, context: context, on: selectedDay)
     }
 
     private func archive(_ task: TaskItem) {
