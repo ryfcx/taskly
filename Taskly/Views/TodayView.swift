@@ -21,6 +21,7 @@ struct TodayView: View {
     @State private var detailTask: TaskItem?
     @State private var isPresentingTemplates = false
     @State private var isPresentingEditor = false
+    @State private var dropTargetID: UUID?
 
     /// Computed rather than stored so a screen left open overnight rolls over correctly.
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
@@ -147,12 +148,7 @@ struct TodayView: View {
         }
 
         if !pending.isEmpty {
-            section(
-                title: isPlanningAhead ? "Queued up" : "On the board",
-                subtitle: nil,
-                accessory: isPlanningAhead ? "\(pending.count) quests" : "\(pending.count) left",
-                tasks: pending
-            )
+            pendingSection
         }
 
         if !done.isEmpty {
@@ -180,6 +176,109 @@ struct TodayView: View {
 
     private var earnedXP: Int {
         done.reduce(0) { $0 + ($1.completion(on: selectedDay)?.xpAwarded ?? 0) }
+    }
+
+    /// Pending quests can be dragged into a new order on today or tomorrow.
+    /// Category filters turn that off so you don't accidentally shuffle a partial list.
+    private var canReorderPending: Bool {
+        categoryFilter == nil && pending.count > 1
+    }
+
+    private var pendingSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(
+                title: isPlanningAhead ? "Queued up" : "On the board",
+                subtitle: canReorderPending ? "Drag to reorder" : nil,
+                accessory: isPlanningAhead ? "\(pending.count) quests" : "\(pending.count) left"
+            )
+
+            ForEach(pending) { task in
+                let row = QuestRow(
+                    task: task,
+                    day: selectedDay,
+                    isCompleted: false,
+                    isSkipped: false,
+                    isLocked: isPlanningAhead,
+                    showsDragHandle: canReorderPending,
+                    onToggle: { toggle(task) },
+                    onOpen: { detailTask = task }
+                )
+                .contextMenu { pendingContextMenu(for: task) }
+                .overlay {
+                    if dropTargetID == task.id {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Theme.accent, lineWidth: 2)
+                    }
+                }
+
+                if canReorderPending {
+                    row
+                        .draggable(task.id.uuidString) {
+                            QuestRow(
+                                task: task,
+                                day: selectedDay,
+                                isCompleted: false,
+                                isLocked: isPlanningAhead,
+                                showsDragHandle: true,
+                                onToggle: {},
+                                onOpen: {}
+                            )
+                            .frame(width: 320)
+                            .opacity(0.92)
+                        }
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let raw = items.first, let fromID = UUID(uuidString: raw) else { return false }
+                            reorderPending(from: fromID, onto: task.id)
+                            return true
+                        } isTargeted: { hovering in
+                            withAnimation(.easeOut(duration: 0.15)) {
+                                dropTargetID = hovering ? task.id : nil
+                            }
+                        }
+                } else {
+                    row
+                }
+            }
+        }
+        .animation(.spring(response: 0.42, dampingFraction: 0.82), value: pending.map(\.id))
+    }
+
+    @ViewBuilder
+    private func pendingContextMenu(for task: TaskItem) -> some View {
+        Button {
+            editingTask = task
+        } label: {
+            Label("Edit quest", systemImage: "pencil")
+        }
+
+        if !isPlanningAhead {
+            Button {
+                complete(task)
+            } label: {
+                Label("Complete", systemImage: "checkmark")
+            }
+
+            Button {
+                skip(task)
+            } label: {
+                Label("Skip for today", systemImage: "forward.fill")
+            }
+        }
+
+        Button(role: .destructive) {
+            archive(task)
+        } label: {
+            Label("Archive", systemImage: "archivebox")
+        }
+    }
+
+    private func reorderPending(from fromID: UUID, onto ontoID: UUID) {
+        let current = pending.map(\.id)
+        guard let next = BoardOrder.moving(fromID, onto: ontoID, in: current) else { return }
+        Haptics.select()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            BoardOrder.apply(pendingOrder: next, to: Array(tasks))
+        }
     }
 
     private func section(title: String, subtitle: String?, accessory: String? = nil, tasks list: [TaskItem]) -> some View {

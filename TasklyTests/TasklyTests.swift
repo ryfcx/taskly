@@ -12,6 +12,31 @@ import SwiftData
 
 // MARK: - Level curve
 
+struct BoardOrderTests {
+    @Test func movingAnItemUpdatesThePendingOrder() {
+        let a = UUID()
+        let b = UUID()
+        let c = UUID()
+        let next = BoardOrder.moving(a, onto: c, in: [a, b, c])
+        #expect(next == [b, c, a])
+    }
+
+    @Test func applyRewritesSortIndexesAroundNonPendingTasks() {
+        let pendingA = TaskItem(title: "A", sortIndex: 0)
+        let other = TaskItem(title: "Other", sortIndex: 1)
+        let pendingB = TaskItem(title: "B", sortIndex: 2)
+        // Force stable IDs for the assertion by using the live objects.
+        BoardOrder.apply(
+            pendingOrder: [pendingB.id, pendingA.id],
+            to: [pendingA, other, pendingB]
+        )
+
+        #expect(pendingB.sortIndex == 0)
+        #expect(other.sortIndex == 1)
+        #expect(pendingA.sortIndex == 2)
+    }
+}
+
 struct DifficultyTests {
     @Test func ultraPaysMoreThanEpicAndTakesSixPips() {
         #expect(TaskDifficulty.ultra.baseXP > TaskDifficulty.epic.baseXP)

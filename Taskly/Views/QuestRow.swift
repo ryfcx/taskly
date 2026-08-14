@@ -13,6 +13,8 @@ struct QuestRow: View {
     var isSkipped: Bool = false
     /// Set when showing a future day, where quests can be queued but not cleared yet.
     var isLocked: Bool = false
+    /// Shows a grip so the row can be dragged to reorder the board.
+    var showsDragHandle: Bool = false
     var onToggle: () -> Void
     var onOpen: () -> Void
 
@@ -57,6 +59,15 @@ struct QuestRow: View {
                 }
             }
             .buttonStyle(.plain)
+
+            if showsDragHandle {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .frame(width: 22, height: 36)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Drag to reorder \(task.title)")
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
