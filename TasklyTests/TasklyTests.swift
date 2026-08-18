@@ -38,11 +38,18 @@ struct BoardOrderTests {
 }
 
 struct DifficultyTests {
-    @Test func ultraPaysMoreThanEpicAndTakesSixPips() {
+    @Test func ultraPaysMoreThanEpic() {
         #expect(TaskDifficulty.ultra.baseXP > TaskDifficulty.epic.baseXP)
         #expect(TaskDifficulty.ultra.baseXP == 120)
-        #expect(TaskDifficulty.ultra.pips == TaskDifficulty.maxPips)
+        #expect(TaskDifficulty.ultra.pips == 6)
         #expect(TaskDifficulty.ultra.blurb.lowercased().contains("day"))
+    }
+
+    @Test func mythicSitsAboveUltraAndTakesSevenPips() {
+        #expect(TaskDifficulty.mythic.baseXP > TaskDifficulty.ultra.baseXP)
+        #expect(TaskDifficulty.mythic.pips == TaskDifficulty.maxPips)
+        #expect(TaskDifficulty.mythic.pips == 7)
+        #expect(TaskDifficulty.mythic.blurb.lowercased().contains("level"))
     }
 }
 
@@ -98,7 +105,7 @@ struct SchedulingTests {
     private let calendar = Calendar.current
 
     @Test func dailyQuestsAreScheduledEveryDay() {
-        let task = TaskItem(title: "Brush my teeth", recurrence: .daily)
+        let task = TaskItem(title: "Brush teeth", recurrence: .daily)
         for offset in 0..<7 {
             let day = calendar.date(byAdding: .day, value: offset, to: Date())!
             #expect(task.isScheduled(on: day))
@@ -119,7 +126,7 @@ struct SchedulingTests {
     }
 
     @Test func questsDoNotAppearBeforeTheyWereCreated() {
-        let task = TaskItem(title: "Study math", recurrence: .daily)
+        let task = TaskItem(title: "Study session", recurrence: .daily)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: Date())!
         #expect(!task.isScheduled(on: yesterday))
     }
@@ -132,7 +139,7 @@ struct SchedulingTests {
 
     @Test func questQueuedForTomorrowStaysOffTodaysBoard() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
-        let task = TaskItem(title: "Study USACO", recurrence: .daily, startDay: tomorrow)
+        let task = TaskItem(title: "Practice problems", recurrence: .daily, startDay: tomorrow)
 
         #expect(!task.isScheduled(on: Date()))
         #expect(task.isScheduled(on: tomorrow))
@@ -153,7 +160,7 @@ struct SchedulingTests {
         let start = calendar.date(byAdding: .day, value: 3, to: calendar.startOfDay(for: Date()))!
         let weekdayIndex = calendar.component(.weekday, from: start) - 1
         let task = TaskItem(
-            title: "Work on app",
+            title: "Work on a project",
             recurrence: .weekly,
             weekdayMask: 1 << weekdayIndex,
             startDay: start
@@ -168,7 +175,7 @@ struct SchedulingTests {
     @Test func remindersDoNotFireBeforeTheStartDay() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
         let task = TaskItem(
-            title: "Make my bed",
+            title: "Make the bed",
             recurrence: .daily,
             reminderEnabled: true,
             reminderMinutes: 8 * 60,
@@ -182,7 +189,7 @@ struct SchedulingTests {
 
     @Test func streaksDoNotLookBackPastTheStartDay() {
         let start = calendar.startOfDay(for: Date())
-        let task = TaskItem(title: "Study math", recurrence: .daily, startDay: start)
+        let task = TaskItem(title: "Study session", recurrence: .daily, startDay: start)
         #expect(task.previousScheduledDay(before: start) == nil)
     }
 
@@ -225,7 +232,7 @@ struct QuestEngineTests {
     @Test func completingAQuestAwardsItsBaseXP() throws {
         let context = try makeContext()
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Study USACO", difficulty: .hard)
+        let task = TaskItem(title: "Practice problems", difficulty: .hard)
         context.insert(profile)
         context.insert(task)
 
@@ -240,7 +247,7 @@ struct QuestEngineTests {
     @Test func completingTwiceInADayIsIgnored() throws {
         let context = try makeContext()
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Make my bed", difficulty: .trivial)
+        let task = TaskItem(title: "Make the bed", difficulty: .trivial)
         context.insert(profile)
         context.insert(task)
 
@@ -255,7 +262,7 @@ struct QuestEngineTests {
     @Test func undoingACompletionRestoresTheOriginalState() throws {
         let context = try makeContext()
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Text a friend", difficulty: .easy)
+        let task = TaskItem(title: "Message someone", difficulty: .easy)
         context.insert(profile)
         context.insert(task)
 
@@ -295,7 +302,7 @@ struct QuestEngineTests {
     @Test func perfectDayNeedsAMeaningfulBoard() throws {
         let context = try makeContext()
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Make my bed", difficulty: .trivial)
+        let task = TaskItem(title: "Make the bed", difficulty: .trivial)
         context.insert(profile)
         context.insert(task)
 
@@ -347,7 +354,7 @@ struct QuestEngineTests {
         let context = try makeContext()
         let calendar = Calendar.current
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Study math", difficulty: .normal)
+        let task = TaskItem(title: "Study session", difficulty: .normal)
         context.insert(profile)
         context.insert(task)
 
@@ -370,7 +377,7 @@ struct QuestEngineTests {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Study math", difficulty: .normal)
+        let task = TaskItem(title: "Study session", difficulty: .normal)
         context.insert(profile)
         context.insert(task)
 
@@ -409,7 +416,7 @@ struct QuestEngineTests {
         let profile = PlayerProfile()
         let start = calendar.date(byAdding: .day, value: -7, to: today)!
         let task = TaskItem(
-            title: "Study math",
+            title: "Study session",
             difficulty: .normal,
             recurrence: .daily,
             startDay: start
@@ -426,6 +433,33 @@ struct QuestEngineTests {
 
         #expect(QuestEngine.skip(task, profile: profile, allTasks: [task], context: context, on: today))
         #expect(task.currentStreak == 1)
+    }
+
+    @Test func mythicPaysAtLeastEnoughToFinishTheCurrentLevel() throws {
+        let context = try makeContext()
+        let profile = PlayerProfile()
+        profile.totalXP = 50 // Level 1 needs 100 XP, so 50 remaining.
+        let task = TaskItem(title: "Boss clear", difficulty: .mythic)
+        context.insert(profile)
+        context.insert(task)
+
+        let levelBefore = profile.level
+        let remaining = profile.xpForNextLevel - profile.xpIntoLevel
+        let outcome = QuestEngine.complete(task, profile: profile, allTasks: [task], context: context)
+
+        #expect(outcome != nil)
+        #expect(outcome!.xpGained >= remaining)
+        #expect(profile.level > levelBefore)
+    }
+
+    @Test func shelvedQuestsDropOffTheBoardAndReminders() {
+        let task = TaskItem(title: "Parked", difficulty: .easy, reminderEnabled: true)
+        #expect(task.isScheduled(on: Date()))
+        #expect(!task.nextReminderDates(limit: 1).isEmpty)
+
+        task.isShelved = true
+        #expect(!task.isScheduled(on: Date()))
+        #expect(task.nextReminderDates(limit: 3).isEmpty)
     }
 }
 
@@ -467,7 +501,7 @@ struct NotificationPlanTests {
         let today = calendar.startOfDay(for: Date())
         // Counted from midnight, so today's late occurrence is ahead of "now" no matter
         // what time the suite actually runs.
-        let task = TaskItem(title: "Brush my teeth", reminderEnabled: true, reminderMinutes: 23 * 60 + 55)
+        let task = TaskItem(title: "Brush teeth", reminderEnabled: true, reminderMinutes: 23 * 60 + 55)
 
         #expect(task.nextReminderDates(limit: 3, from: today).contains { calendar.isDate($0, inSameDayAs: today) })
 
@@ -488,7 +522,7 @@ struct NotificationPlanTests {
     @Test func planIsEmptyWhenNotificationsAreOff() {
         let profile = PlayerProfile()
         profile.notificationsEnabled = false
-        let task = TaskItem(title: "Study USACO", reminderEnabled: true)
+        let task = TaskItem(title: "Practice problems", reminderEnabled: true)
 
         let plan = NotificationManager.shared.buildPlan(tasks: [task], profile: profile)
         #expect(plan.isEmpty)
@@ -497,7 +531,7 @@ struct NotificationPlanTests {
     @Test func planIncludesRemindersAndDigestsInChronologicalOrder() {
         let profile = PlayerProfile()
         profile.notificationsEnabled = true
-        let task = TaskItem(title: "Work on my app", reminderEnabled: true, reminderMinutes: 12 * 60)
+        let task = TaskItem(title: "Work on a project", reminderEnabled: true, reminderMinutes: 12 * 60)
 
         let plan = NotificationManager.shared.buildPlan(tasks: [task], profile: profile)
 
@@ -514,7 +548,7 @@ struct NotificationPlanTests {
         profile.notificationsEnabled = true
         profile.morningBriefingEnabled = false
         profile.eveningNudgeMinutes = 23 * 60 + 59
-        let task = TaskItem(title: "Study USACO", difficulty: .hard)
+        let task = TaskItem(title: "Practice problems", difficulty: .hard)
 
         let plan = NotificationManager.shared.buildPlan(
             tasks: [task],
@@ -523,7 +557,7 @@ struct NotificationPlanTests {
         )
         let nudge = plan.first { $0.kind == .eveningNudge }
 
-        #expect(nudge?.body.contains("Study USACO") == true)
+        #expect(nudge?.body.contains("Practice problems") == true)
     }
 
     // MARK: - Encouragement pings
@@ -537,7 +571,7 @@ struct NotificationPlanTests {
 
     @Test func encouragementPingsFillTheMiddleOfTheDay() {
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Study math", recurrence: .daily)
+        let task = TaskItem(title: "Study session", recurrence: .daily)
         let midnight = calendar.startOfDay(for: Date())
 
         let plan = NotificationManager.shared.buildPlan(
@@ -560,7 +594,7 @@ struct NotificationPlanTests {
     @Test func encouragementCadenceFollowsThePreference() {
         let profile = PlayerProfile()
         profile.encouragementPingsPerDay = 5
-        let task = TaskItem(title: "Work on app", recurrence: .daily)
+        let task = TaskItem(title: "Work on a project", recurrence: .daily)
 
         let plan = NotificationManager.shared.buildPlan(
             tasks: [task],
@@ -574,7 +608,7 @@ struct NotificationPlanTests {
 
     @Test func aClearedBoardStopsBeingCheeredAt() {
         let profile = PlayerProfile()
-        let task = TaskItem(title: "Make my bed", recurrence: .daily)
+        let task = TaskItem(title: "Make the bed", recurrence: .daily)
         let today = calendar.startOfDay(for: Date())
         task.lastCompletedDay = today
         task.completions.append(CompletionRecord(xpAwarded: 5, category: .routine, task: task))
@@ -597,7 +631,7 @@ struct NotificationPlanTests {
     @Test func encouragementCanBeSwitchedOff() {
         let profile = PlayerProfile()
         profile.encouragementEnabled = false
-        let task = TaskItem(title: "Study USACO", recurrence: .daily)
+        let task = TaskItem(title: "Practice problems", recurrence: .daily)
 
         let plan = NotificationManager.shared.buildPlan(
             tasks: [task],
@@ -614,7 +648,7 @@ struct NotificationPlanTests {
         let today = calendar.startOfDay(for: Date())
         let end = calendar.date(byAdding: .day, value: 2, to: today)!
         profile.setBreak(from: today, to: end)
-        let task = TaskItem(title: "Study math", reminderEnabled: true, reminderMinutes: 12 * 60)
+        let task = TaskItem(title: "Study session", reminderEnabled: true, reminderMinutes: 12 * 60)
         let expiry = BuildExpiry(
             expiresAt: calendar.date(byAdding: .day, value: 1, to: today)!.addingTimeInterval(12 * 3600),
             source: .provisioningProfile
@@ -710,9 +744,9 @@ struct EncouragementTests {
 
     @Test func theFinalQuestIsCalledOutByName() {
         let message = Encouragement.message(
-            done: 3, total: 4, remainingTitles: ["Study USACO"], xp: 10, streak: 0, seed: 2
+            done: 3, total: 4, remainingTitles: ["Practice problems"], xp: 10, streak: 0, seed: 2
         )
-        #expect(message.body.contains("Study USACO"))
+        #expect(message.body.contains("Practice problems"))
     }
 
     @Test func aLiveStreakIsMentionedWhileTheBoardIsUntouched() {
@@ -805,7 +839,7 @@ struct FocusEngineTests {
     @Test func pausingBanksElapsedTimeWithoutLosingIt() {
         let controller = FocusController()
         let start = Date()
-        controller.start(questID: nil, questTitle: "Study math", minutes: 25, at: start)
+        controller.start(questID: nil, questTitle: "Study session", minutes: 25, at: start)
 
         let pauseAt = start.addingTimeInterval(7 * 60)
         controller.pause(at: pauseAt)
@@ -825,7 +859,7 @@ struct FocusEngineTests {
 
         let controller = FocusController()
         let start = Date()
-        controller.start(questID: nil, questTitle: "Work on app", minutes: 25, at: start)
+        controller.start(questID: nil, questTitle: "Work on a project", minutes: 25, at: start)
         let active = controller.takeSession()!
 
         let outcome = FocusEngine.finish(

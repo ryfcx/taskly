@@ -200,6 +200,7 @@ struct TodayView: View {
                     isSkipped: false,
                     isLocked: isPlanningAhead,
                     showsDragHandle: canReorderPending,
+                    profile: profile,
                     onToggle: { toggle(task) },
                     onOpen: { detailTask = task }
                 )
@@ -220,6 +221,7 @@ struct TodayView: View {
                                 isCompleted: false,
                                 isLocked: isPlanningAhead,
                                 showsDragHandle: true,
+                                profile: profile,
                                 onToggle: {},
                                 onOpen: {}
                             )
@@ -265,6 +267,12 @@ struct TodayView: View {
             }
         }
 
+        Button {
+            saveForLater(task)
+        } label: {
+            Label("Save for later", systemImage: "bookmark")
+        }
+
         Button(role: .destructive) {
             archive(task)
         } label: {
@@ -292,6 +300,7 @@ struct TodayView: View {
                     isCompleted: task.isCleared(on: selectedDay),
                     isSkipped: task.isSkipped(on: selectedDay),
                     isLocked: isPlanningAhead,
+                    profile: profile,
                     onToggle: { toggle(task) },
                     onOpen: { detailTask = task }
                 )
@@ -333,6 +342,12 @@ struct TodayView: View {
                                 Label("Skip for today", systemImage: "forward.fill")
                             }
                         }
+                    }
+
+                    Button {
+                        saveForLater(task)
+                    } label: {
+                        Label("Save for later", systemImage: "bookmark")
                     }
 
                     Button(role: .destructive) {
@@ -561,6 +576,13 @@ struct TodayView: View {
         Haptics.warning()
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
             task.isArchived = true
+        }
+    }
+
+    private func saveForLater(_ task: TaskItem) {
+        Haptics.tap()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            task.isShelved = true
         }
     }
 }

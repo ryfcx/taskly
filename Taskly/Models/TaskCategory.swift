@@ -35,8 +35,8 @@ enum TaskCategory: String, CaseIterable, Identifiable, Codable {
     var blurb: String {
         switch self {
         case .routine: "Morning & night habits"
-        case .study: "Math, USACO, revision"
-        case .build: "Apps, projects, side quests"
+        case .study: "Classes, reading, practice"
+        case .build: "Projects and creative work"
         case .fitness: "Move, lift, stretch"
         case .social: "People you care about"
         case .mind: "Read, journal, breathe"

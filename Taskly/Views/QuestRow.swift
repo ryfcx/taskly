@@ -15,6 +15,8 @@ struct QuestRow: View {
     var isLocked: Bool = false
     /// Shows a grip so the row can be dragged to reorder the board.
     var showsDragHandle: Bool = false
+    /// Used so Mythic quests can show the XP needed to finish the current level.
+    var profile: PlayerProfile? = nil
     var onToggle: () -> Void
     var onOpen: () -> Void
 
@@ -85,7 +87,7 @@ struct QuestRow: View {
     private var trailingLabel: String {
         if isSkipped { return "Skip" }
         if isCompleted { return "+\(earnedXP)" }
-        return "+\(QuestEngine.projectedXP(for: task))"
+        return "+\(QuestEngine.projectedXP(for: task, profile: profile))"
     }
 
     private var trailingColor: Color {

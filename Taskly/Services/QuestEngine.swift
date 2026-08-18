@@ -43,9 +43,17 @@ enum QuestEngine {
     }
 
     /// XP the player would earn for clearing this quest right now, shown on the card.
-    static func projectedXP(for task: TaskItem) -> Int {
-        let base = task.difficulty.baseXP
+    static func projectedXP(for task: TaskItem, profile: PlayerProfile? = nil) -> Int {
+        let base = baseXP(for: task, profile: profile)
         return base + streakBonus(base: base, streak: task.currentStreak + 1)
+    }
+
+    /// Mythic pays at least enough XP to finish the current level; everything else uses its table value.
+    static func baseXP(for task: TaskItem, profile: PlayerProfile? = nil) -> Int {
+        guard task.difficulty == .mythic else { return task.difficulty.baseXP }
+        guard let profile else { return task.difficulty.baseXP }
+        let remaining = max(1, profile.xpForNextLevel - profile.xpIntoLevel)
+        return max(task.difficulty.baseXP, remaining)
     }
 
     // MARK: - Completion
@@ -71,7 +79,7 @@ enum QuestEngine {
         }
 
         let levelBefore = profile.level
-        let base = task.difficulty.baseXP
+        let base = baseXP(for: task, profile: profile)
 
         let record = CompletionRecord(timestamp: date, xpAwarded: base, category: task.category, task: task)
         context.insert(record)
@@ -302,9 +310,14 @@ enum QuestEngine {
     }
 
     /// Total XP still sitting on the board for a given day.
-    static func remainingXP(allTasks: [TaskItem], on day: Date, calendar: Calendar = .current) -> Int {
+    static func remainingXP(
+        allTasks: [TaskItem],
+        on day: Date,
+        profile: PlayerProfile? = nil,
+        calendar: Calendar = .current
+    ) -> Int {
         tasks(allTasks, scheduledOn: day, calendar: calendar)
             .filter { !$0.isCompleted(on: day, calendar: calendar) }
-            .reduce(0) { $0 + projectedXP(for: $1) }
+            .reduce(0) { $0 + projectedXP(for: $1, profile: profile) }
     }
 }

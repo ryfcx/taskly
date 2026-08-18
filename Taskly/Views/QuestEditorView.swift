@@ -28,6 +28,9 @@ struct QuestEditorView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
+    @Query(filter: #Predicate<TaskItem> { $0.isShelved && !$0.isArchived }, sort: \TaskItem.title)
+    private var shelvedTasks: [TaskItem]
+
     @State private var title = ""
     @State private var notes = ""
     @State private var category: TaskCategory = .routine
@@ -67,7 +70,10 @@ struct QuestEditorView: View {
                     startSection
                     scheduleSection
                     reminderSection
-                    if !isEditing { suggestionsSection }
+                    if !isEditing {
+                        shelvedSection
+                        suggestionsSection
+                    }
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
@@ -145,7 +151,7 @@ struct QuestEditorView: View {
             SectionHeader(title: "Quest")
 
             VStack(spacing: 0) {
-                TextField("", text: $title, prompt: Text("e.g. Study USACO").foregroundStyle(Theme.textTertiary))
+                TextField("", text: $title, prompt: Text("e.g. Evening walk").foregroundStyle(Theme.textTertiary))
                     .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundStyle(Theme.textPrimary)
                     .padding(14)
@@ -208,7 +214,7 @@ struct QuestEditorView: View {
             SectionHeader(
                 title: "Difficulty",
                 subtitle: difficulty.blurb,
-                accessory: "+\(difficulty.baseXP) XP base"
+                accessory: difficulty == .mythic ? "Level up" : "+\(difficulty.baseXP) XP base"
             )
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 3), spacing: 7) {
@@ -220,7 +226,7 @@ struct QuestEditorView: View {
                         VStack(spacing: 4) {
                             Text(option.title)
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                            Text("\(option.baseXP)")
+                            Text(option == .mythic ? "LVL" : "\(option.baseXP)")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                                 .opacity(0.75)
                         }
@@ -441,6 +447,47 @@ struct QuestEditorView: View {
         }
     }
 
+    private var shelvedSection: some View {
+        Group {
+            if !shelvedTasks.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionHeader(
+                        title: "Saved for later",
+                        subtitle: "Tap to put one back on the board"
+                    )
+
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 8) {
+                            ForEach(shelvedTasks) { task in
+                                Button {
+                                    restoreShelved(task)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: task.iconName)
+                                            .font(.system(size: 11, weight: .bold))
+                                        Text(task.title)
+                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                            .lineLimit(1)
+                                    }
+                                    .foregroundStyle(task.category.tint)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 9)
+                                    .background {
+                                        Capsule().fill(task.category.tint.opacity(0.13))
+                                    }
+                                }
+                                .buttonStyle(.pressable)
+                            }
+                        }
+                        .padding(.horizontal, 2)
+                    }
+                    .scrollIndicators(.hidden)
+                    .scrollClipDisabled()
+                }
+            }
+        }
+    }
+
     private var suggestionsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Quick fill", subtitle: "Tap to prefill this quest")
@@ -532,6 +579,15 @@ struct QuestEditorView: View {
             reminderEnabled = true
             reminderTime = PlayerProfile.date(fromMinutes: minutes)
         }
+    }
+
+    private func restoreShelved(_ task: TaskItem) {
+        Haptics.success()
+        task.isShelved = false
+        if startOption != .today {
+            task.startDay = resolvedStartDay
+        }
+        dismiss()
     }
 
     private func save() {

@@ -14,6 +14,8 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
     case epic
     /// Most of the day — deep work, contests, all-day builds.
     case ultra
+    /// Pays enough XP to finish the current level in one clear.
+    case mythic
 
     var id: String { rawValue }
 
@@ -25,6 +27,7 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .hard: "Hard"
         case .epic: "Epic"
         case .ultra: "Ultra"
+        case .mythic: "Mythic"
         }
     }
 
@@ -37,6 +40,7 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .hard: "Real effort"
         case .epic: "A big lift"
         case .ultra: "Most of the day"
+        case .mythic: "Instant level up"
         }
     }
 
@@ -48,6 +52,8 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .hard: 35
         case .epic: 60
         case .ultra: 120
+        // Floor only — QuestEngine awards at least enough to finish the current level.
+        case .mythic: 300
         }
     }
 
@@ -60,6 +66,7 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .hard: 4
         case .epic: 5
         case .ultra: 6
+        case .mythic: 7
         }
     }
 
@@ -73,6 +80,7 @@ enum TaskDifficulty: String, CaseIterable, Identifiable, Codable {
         case .hard: Color(hex: 0xFFA23A)
         case .epic: Color(hex: 0xFF4D6D)
         case .ultra: Color(hex: 0xC77DFF)
+        case .mythic: Color(hex: 0xFFE566)
         }
     }
 }

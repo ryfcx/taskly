@@ -45,6 +45,10 @@ struct QuestLibraryView: View {
                         categorySection(group.category, tasks: group.tasks)
                     }
 
+                    if !shelved.isEmpty {
+                        shelvedSection
+                    }
+
                     if !archived.isEmpty {
                         archivedSection
                     }
@@ -87,7 +91,11 @@ struct QuestLibraryView: View {
     // MARK: - Data
 
     private var active: [TaskItem] {
-        allTasks.filter { !$0.isArchived && matchesSearch($0) }
+        allTasks.filter { !$0.isArchived && !$0.isShelved && matchesSearch($0) }
+    }
+
+    private var shelved: [TaskItem] {
+        allTasks.filter { $0.isShelved && !$0.isArchived && matchesSearch($0) }
     }
 
     private var archived: [TaskItem] {
@@ -155,6 +163,7 @@ struct QuestLibraryView: View {
                     task: task,
                     day: today,
                     isCompleted: task.isCompleted(on: today),
+                    profile: profile,
                     onToggle: { toggle(task) },
                     onOpen: { detailTask = task }
                 )
@@ -165,10 +174,59 @@ struct QuestLibraryView: View {
                     Button { duplicate(task) } label: {
                         Label("Duplicate", systemImage: "plus.square.on.square")
                     }
+                    Button { setShelved(task, true) } label: {
+                        Label("Save for later", systemImage: "bookmark")
+                    }
                     Button(role: .destructive) { setArchived(task, true) } label: {
                         Label("Archive", systemImage: "archivebox")
                     }
                 }
+            }
+        }
+    }
+
+    private var shelvedSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(
+                title: "Saved for later",
+                subtitle: "Off the board until you bring them back",
+                accessory: "\(shelved.count)"
+            )
+
+            ForEach(shelved) { task in
+                HStack(spacing: 12) {
+                    Image(systemName: task.iconName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(task.category.tint)
+                        .frame(width: 34, height: 34)
+                        .background {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(task.category.tint.opacity(0.14))
+                        }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(task.title)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text(task.difficulty.title)
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        setShelved(task, false)
+                    } label: {
+                        Text("Add back")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.pressable)
+                }
+                .padding(.horizontal, 13)
+                .padding(.vertical, 10)
+                .glassCard(radius: 16, fill: Theme.surface.opacity(0.55))
             }
         }
     }
@@ -274,6 +332,13 @@ struct QuestLibraryView: View {
         Haptics.tap()
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
             task.isArchived = archived
+        }
+    }
+
+    private func setShelved(_ task: TaskItem, _ shelved: Bool) {
+        Haptics.tap()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            task.isShelved = shelved
         }
     }
 

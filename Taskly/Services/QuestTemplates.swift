@@ -49,39 +49,39 @@ enum QuestTemplates {
             symbol: "sunrise.fill",
             category: .routine,
             templates: [
-                QuestTemplate(title: "Make my bed", symbol: "bed.double.fill", category: .routine, difficulty: .trivial, reminderMinutes: 7 * 60 + 30),
-                QuestTemplate(title: "Brush my teeth", symbol: "sparkles", category: .routine, difficulty: .trivial, reminderMinutes: 7 * 60 + 45),
+                QuestTemplate(title: "Make the bed", symbol: "bed.double.fill", category: .routine, difficulty: .trivial, reminderMinutes: 7 * 60 + 30),
+                QuestTemplate(title: "Brush teeth", symbol: "sparkles", category: .routine, difficulty: .trivial, reminderMinutes: 7 * 60 + 45),
                 QuestTemplate(title: "Drink water", symbol: "drop.fill", category: .routine, difficulty: .trivial),
-                QuestTemplate(title: "Tidy my desk", symbol: "tray.fill", category: .chores, difficulty: .easy),
-                QuestTemplate(title: "Lights out by 11", symbol: "moon.stars.fill", category: .routine, difficulty: .easy, reminderMinutes: 22 * 60 + 30)
+                QuestTemplate(title: "Tidy the desk", symbol: "tray.fill", category: .chores, difficulty: .easy),
+                QuestTemplate(title: "Lights out on time", symbol: "moon.stars.fill", category: .routine, difficulty: .easy, reminderMinutes: 22 * 60 + 30)
             ]
         ),
         QuestPack(
-            name: "Study Grind",
-            blurb: "Math, USACO and everything in between",
+            name: "Study",
+            blurb: "Classes, reading and practice",
             symbol: "book.fill",
             category: .study,
             templates: [
-                QuestTemplate(title: "Study math", symbol: "function", category: .study, difficulty: .normal, reminderMinutes: 17 * 60),
-                QuestTemplate(title: "Study USACO", symbol: "chart.xyaxis.line", category: .study, difficulty: .hard, reminderMinutes: 18 * 60),
-                QuestTemplate(title: "USACO contest day", symbol: "trophy.fill", category: .study, difficulty: .ultra),
-                QuestTemplate(title: "Solve a practice problem", symbol: "puzzlepiece.fill", category: .study, difficulty: .normal),
+                QuestTemplate(title: "Study session", symbol: "book.fill", category: .study, difficulty: .normal, reminderMinutes: 17 * 60),
+                QuestTemplate(title: "Practice problems", symbol: "puzzlepiece.fill", category: .study, difficulty: .hard, reminderMinutes: 18 * 60),
+                QuestTemplate(title: "Exam day", symbol: "trophy.fill", category: .study, difficulty: .ultra),
+                QuestTemplate(title: "All-nighter push", symbol: "sparkles", category: .study, difficulty: .mythic),
                 QuestTemplate(title: "Review notes", symbol: "text.book.closed.fill", category: .study, difficulty: .easy),
-                QuestTemplate(title: "Read 20 pages", symbol: "book.closed.fill", category: .mind, difficulty: .easy)
+                QuestTemplate(title: "Read for 20 minutes", symbol: "book.closed.fill", category: .mind, difficulty: .easy)
             ]
         ),
         QuestPack(
-            name: "Builder Mode",
-            blurb: "Ship the apps you keep thinking about",
+            name: "Build",
+            blurb: "Projects and creative work",
             symbol: "hammer.fill",
             category: .build,
             templates: [
-                QuestTemplate(title: "Work on my app", symbol: "app.badge.fill", category: .build, difficulty: .hard, reminderMinutes: 19 * 60),
-                QuestTemplate(title: "Work on second app", symbol: "square.stack.3d.up.fill", category: .build, difficulty: .hard),
-                QuestTemplate(title: "All-day build session", symbol: "hammer.fill", category: .build, difficulty: .ultra),
-                QuestTemplate(title: "Commit something today", symbol: "curlybraces", category: .build, difficulty: .normal),
+                QuestTemplate(title: "Work on a project", symbol: "hammer.fill", category: .build, difficulty: .hard, reminderMinutes: 19 * 60),
+                QuestTemplate(title: "Ship a feature", symbol: "flag.fill", category: .build, difficulty: .hard),
+                QuestTemplate(title: "Deep work day", symbol: "flame.fill", category: .build, difficulty: .ultra),
+                QuestTemplate(title: "Write something down", symbol: "pencil.line", category: .build, difficulty: .normal),
                 QuestTemplate(title: "Fix one bug", symbol: "ant.fill", category: .build, difficulty: .normal),
-                QuestTemplate(title: "Plan tomorrow's build", symbol: "list.bullet.clipboard.fill", category: .build, difficulty: .easy, reminderMinutes: 21 * 60)
+                QuestTemplate(title: "Plan tomorrow", symbol: "list.bullet.clipboard.fill", category: .build, difficulty: .easy, reminderMinutes: 21 * 60)
             ]
         ),
         QuestPack(
@@ -90,7 +90,7 @@ enum QuestTemplates {
             symbol: "bubble.left.and.bubble.right.fill",
             category: .social,
             templates: [
-                QuestTemplate(title: "Text a friend", symbol: "message.fill", category: .social, difficulty: .easy),
+                QuestTemplate(title: "Message someone", symbol: "message.fill", category: .social, difficulty: .easy),
                 QuestTemplate(title: "Call family", symbol: "phone.fill", category: .social, difficulty: .easy, recurrence: .weekly, weekdayMask: 0b0000001),
                 QuestTemplate(title: "Workout", symbol: "dumbbell.fill", category: .fitness, difficulty: .hard, recurrence: .weekly, weekdayMask: Weekdays.weekdaysOnly),
                 QuestTemplate(title: "Go for a walk", symbol: "figure.walk", category: .fitness, difficulty: .easy),

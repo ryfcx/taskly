@@ -25,19 +25,19 @@ final class TasklyUITests: XCTestCase {
         allowNotificationsIfPrompted()
 
         XCTAssertTrue(
-            app.staticTexts["Make my bed"].waitForExistence(timeout: 5),
+            app.staticTexts["Make the bed"].waitForExistence(timeout: 5),
             "Starter quests should land on the board"
         )
 
-        addCustomQuest(app, titled: "Work on second app")
+        addCustomQuest(app, titled: "Ship a feature")
         XCTAssertTrue(
-            app.staticTexts["Work on second app"].waitForExistence(timeout: 5),
+            app.staticTexts["Ship a feature"].waitForExistence(timeout: 5),
             "A hand written quest should land on the board"
         )
         capture(app, name: "03-today-populated")
 
         // Clearing a quest should award XP and move it into the cleared section.
-        let complete = app.buttons["Complete Make my bed"]
+        let complete = app.buttons["Complete Make the bed"]
         XCTAssertTrue(complete.waitForExistence(timeout: 3), "Quest rows expose a complete button")
         complete.tap()
         sleep(1)
@@ -46,7 +46,7 @@ final class TasklyUITests: XCTestCase {
 
         // Quest detail. Use a quest that is still pending, since cleared ones
         // move to the bottom section and may be scrolled out of reach.
-        app.staticTexts["Brush my teeth"].firstMatch.tap()
+        app.staticTexts["Brush teeth"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["TRACK RECORD"].waitForExistence(timeout: 4), "Detail screen should open")
         capture(app, name: "05-quest-detail")
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -116,11 +116,11 @@ final class TasklyUITests: XCTestCase {
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 3), "Editor should expose a title field")
         field.tap()
-        field.typeText("Prep USACO practice")
+        field.typeText("Write a draft")
         app.navigationBars["New quest"].buttons["Save"].tap()
 
         XCTAssertTrue(
-            app.staticTexts["Prep USACO practice"].waitForExistence(timeout: 5),
+            app.staticTexts["Write a draft"].waitForExistence(timeout: 5),
             "A quest queued for tomorrow should show on tomorrow's board"
         )
         capture(app, name: "14-tomorrow-queued")
@@ -128,7 +128,7 @@ final class TasklyUITests: XCTestCase {
         app.buttons["Plan Today"].tap()
         sleep(1)
         XCTAssertFalse(
-            app.staticTexts["Prep USACO practice"].exists,
+            app.staticTexts["Write a draft"].exists,
             "A quest queued for tomorrow should stay off today's board"
         )
         capture(app, name: "15-today-unchanged")
@@ -144,7 +144,7 @@ final class TasklyUITests: XCTestCase {
         // Take whichever rows are on screen; the gallery scrolls and exact
         // positions are not what this test is verifying.
         var selected = 0
-        for title in ["Make my bed", "Brush my teeth", "Drink water", "Tidy my desk"] {
+        for title in ["Make the bed", "Brush teeth", "Drink water", "Tidy the desk"] {
             let row = app.buttons.containing(.staticText, identifier: title).firstMatch
             if row.exists, row.isHittable {
                 row.tap()

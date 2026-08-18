@@ -90,7 +90,7 @@ struct QuestDetailView: View {
 
                 HStack(spacing: 6) {
                     MetaPill(symbol: task.category.symbol, text: task.category.title, tint: task.category.tint)
-                    MetaPill(symbol: "bolt.fill", text: "+\(QuestEngine.projectedXP(for: task)) XP", tint: Theme.gold)
+                    MetaPill(symbol: "bolt.fill", text: "+\(QuestEngine.projectedXP(for: task, profile: profile)) XP", tint: Theme.gold)
                     if task.currentStreak >= 1 {
                         MetaPill(symbol: "flame.fill", text: "\(task.currentStreak)", tint: Theme.streak)
                     }
@@ -116,6 +116,23 @@ struct QuestDetailView: View {
                     skipToday()
                 } label: {
                     Label("Skip for today", systemImage: "forward.fill")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.06))
+                        }
+                }
+                .buttonStyle(.pressable)
+            }
+
+            if !task.isShelved {
+                Button {
+                    saveForLater()
+                } label: {
+                    Label("Save for later", systemImage: "bookmark")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(Theme.textSecondary)
                         .frame(maxWidth: .infinity)
@@ -248,6 +265,23 @@ struct QuestDetailView: View {
 
     private var dangerZone: some View {
         VStack(spacing: 10) {
+            if task.isShelved {
+                Button {
+                    Haptics.tap()
+                    withAnimation {
+                        task.isShelved = false
+                    }
+                } label: {
+                    Label("Bring back to board", systemImage: "bookmark.slash")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .glassCard(radius: 16)
+                }
+                .buttonStyle(.pressable)
+            }
+
             Button {
                 Haptics.tap()
                 withAnimation { task.isArchived.toggle() }
@@ -288,6 +322,14 @@ struct QuestDetailView: View {
     private func skipToday() {
         Haptics.tap()
         _ = QuestEngine.skip(task, profile: profile, allTasks: allTasks, context: context, on: today)
+    }
+
+    private func saveForLater() {
+        Haptics.tap()
+        withAnimation {
+            task.isShelved = true
+        }
+        dismiss()
     }
 
     private func completeAnyway() {

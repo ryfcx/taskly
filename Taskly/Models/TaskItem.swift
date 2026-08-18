@@ -26,6 +26,8 @@ final class TaskItem {
     /// or later. Nil means it starts the day it was created.
     var startDay: Date?
     var isArchived: Bool = false
+    /// Parked off the board so it can be pulled back from the new-quest editor later.
+    var isShelved: Bool = false
     var sortIndex: Int = 0
 
     var currentStreak: Int = 0
@@ -154,7 +156,7 @@ extension TaskItem {
 
     /// Whether this quest should appear on the board for the given day.
     func isScheduled(on date: Date, calendar: Calendar = .current) -> Bool {
-        guard !isArchived else { return false }
+        guard !isArchived, !isShelved else { return false }
         let day = calendar.startOfDay(for: date)
 
         // A finished one-off drops off the board but stays visible on the day it was cleared.
@@ -204,7 +206,7 @@ extension TaskItem {
 
     /// Upcoming reminder fire dates, skipping occurrences that are already finished.
     func nextReminderDates(limit: Int, from now: Date = Date(), calendar: Calendar = .current) -> [Date] {
-        guard reminderEnabled, !isArchived, limit > 0 else { return [] }
+        guard reminderEnabled, !isArchived, !isShelved, limit > 0 else { return [] }
 
         var results: [Date] = []
         let today = calendar.startOfDay(for: now)

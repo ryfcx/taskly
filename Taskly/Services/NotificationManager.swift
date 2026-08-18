@@ -146,6 +146,7 @@ final class NotificationManager {
         tasks.compactMap { task in
             guard task.recurrence == .once,
                   !task.isArchived,
+                  !task.isShelved,
                   task.lastCompletedDay == nil,
                   let due = task.dueDate else { return nil }
 
